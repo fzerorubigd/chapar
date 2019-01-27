@@ -1,6 +1,6 @@
 package workers
 
-import "github.com/fzerorubigd/chaapaar/tasks"
+import "github.com/fzerorubigd/chapar/tasks"
 
 // TODO : Protobuf is a little to much dependency for this, remove it
 

@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/fzerorubigd/chaapaar/tasks"
+	"github.com/fzerorubigd/chapar/tasks"
 )
 
 type brokerMock struct {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/fzerorubigd/chaapaar/tasks"
+	"github.com/fzerorubigd/chapar/tasks"
 )
 
 // TODO : no global state
