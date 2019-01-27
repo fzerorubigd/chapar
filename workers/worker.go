@@ -2,8 +2,9 @@ package workers
 
 import (
 	"context"
-	errors2 "github.com/pkg/errors"
 	"sync"
+
+	errors2 "github.com/pkg/errors"
 )
 
 // TODO : Support for middleware

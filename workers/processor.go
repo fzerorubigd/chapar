@@ -2,7 +2,8 @@ package workers
 
 import (
 	"context"
-	"github.com/fzerorubigd/chapar/taskspb"
+
+	"github.com/fzerorubigd/chaapaar/taskspb"
 	"github.com/pkg/errors"
 )
 

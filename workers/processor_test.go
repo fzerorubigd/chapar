@@ -3,12 +3,13 @@ package workers
 import (
 	"context"
 	"fmt"
-	"github.com/fzerorubigd/chapar/taskspb"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/fzerorubigd/chaapaar/taskspb"
 )
 
 type brokerMock struct {

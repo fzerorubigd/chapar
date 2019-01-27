@@ -1,6 +1,6 @@
 package workers
 
-import "github.com/fzerorubigd/chapar/taskspb"
+import "github.com/fzerorubigd/chaapaar/taskspb"
 
 // Consumer is used to fetch the next job
 type Consumer interface {
