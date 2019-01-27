@@ -9,13 +9,13 @@ import (
 // TODO : Support for middleware
 
 type (
-	// Interface for the actual plugin, the worker
+	// Worker for the actual plugin, the worker
 	Worker interface {
 		// Process the job
 		Process(context.Context, []byte) error
 	}
 
-	// WorkerOptions is the struct used for handling options
+	// WorkerHandler is the struct used for handling options
 	WorkerHandler struct {
 		w Worker
 	}

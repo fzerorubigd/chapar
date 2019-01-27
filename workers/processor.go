@@ -25,7 +25,7 @@ type (
 	}
 	// ProcessOptions is the options for a job handler
 	ProcessOptions func(*ProcessHandler) error
-	contextKey int
+	contextKey     int
 )
 
 const (

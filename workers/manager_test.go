@@ -35,9 +35,9 @@ func TestManager(t *testing.T) {
 	require.NoError(t, m.RegisterWorker("q", w))
 	ctx, cl := context.WithCancel(context.Background())
 	go func() {
-		require.NoError(t, m.ProcessQueue(ctx, "q", ), WithParallelLimit(3))
+		require.NoError(t, m.ProcessQueue(ctx, "q"), WithParallelLimit(3))
 	}()
-	for i := 1; i < 100; i ++ {
+	for i := 1; i < 100; i++ {
 		w.wg.Add(1)
 		require.NoError(t, m.Enqueue(ctx, "q", []byte(fmt.Sprint(i)), WithMetaData([]byte(fmt.Sprint(i)))))
 	}
