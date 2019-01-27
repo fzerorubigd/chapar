@@ -3,6 +3,7 @@ package workers
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
 	"github.com/fzerorubigd/chapar/tasks"
@@ -18,8 +19,8 @@ type (
 		live       bool
 		retryCount int
 
-		queue  string
-		broker Consumer
+		queue    string
+		consumer Consumer
 	}
 	// ProcessOptions is the options for a job handler
 	ProcessOptions func(*ProcessHandler) error
@@ -42,13 +43,13 @@ func GetJob(ctx context.Context) (*tasks.Task, error) {
 }
 
 // GetJobID return the job id from the context
-func GetJobID(ctx context.Context) (*tasks.UUID, error) {
+func GetJobID(ctx context.Context) (uuid.UUID, error) {
 	j, err := GetJob(ctx)
 	if err != nil {
-		return nil, err
+		return uuid.UUID{}, err
 	}
 
-	return j.Id, nil
+	return j.ID, nil
 }
 
 // WithParallelLimit set the option for parallel job processing
@@ -73,6 +74,7 @@ func WithLivePlugin() ProcessOptions {
 	}
 }
 
+// WithRetryCount add retry limit to the process
 func WithRetryCount(cnt int) ProcessOptions {
 	return func(p *ProcessHandler) error {
 		if cnt < 0 {
@@ -83,10 +85,16 @@ func WithRetryCount(cnt int) ProcessOptions {
 	}
 }
 
-func (m *Manager) ProcessQueue(ctx context.Context, broker Consumer, queue string, opts ...ProcessOptions) error {
+// ProcessQueue start the processing of the queue. this is blocker, so call it in its own routine, for terminating
+// the call, use the context
+func (m *Manager) ProcessQueue(ctx context.Context, queue string, opts ...ProcessOptions) error {
+	if m.consumer == nil {
+		return errors.New("consumer is not set")
+	}
+
 	handler := &ProcessHandler{
-		broker: broker,
-		queue:  queue,
+		consumer: m.consumer,
+		queue:    queue,
 	}
 
 	for i := range opts {
@@ -100,13 +108,13 @@ func (m *Manager) ProcessQueue(ctx context.Context, broker Consumer, queue strin
 	)
 	if handler.live {
 		getChan = func() chan *tasks.Task {
-			return handler.broker.Jobs(handler.queue)
+			return handler.consumer.Jobs(handler.queue)
 		}
 		workers = func() *WorkerHandler {
 			return m.getWorkers(handler.queue)
 		}
 	} else {
-		c := handler.broker.Jobs(handler.queue)
+		c := handler.consumer.Jobs(handler.queue)
 		getChan = func() chan *tasks.Task {
 			return c
 		}
@@ -126,7 +134,7 @@ func (m *Manager) ProcessQueue(ctx context.Context, broker Consumer, queue strin
 			go func(free bool) {
 				if err := m.processJob(ctx, job, workers()); err != nil {
 					job.Redeliver++
-					if err := handler.broker.Requeue(handler.queue, job); err != nil {
+					if err := handler.consumer.Requeue(handler.queue, job); err != nil {
 						// What to do :/
 					}
 				}
