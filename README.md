@@ -1,5 +1,6 @@
 # Chapar 
 
+[![GoDoc](https://godoc.org/github.com/fzerorubigd/chapar?status.svg)](https://godoc.org/github.com/fzerorubigd/chapar)
 [![Build Status](https://travis-ci.org/fzerorubigd/chapar.svg?branch=master)](https://travis-ci.org/fzerorubigd/chapar)
 [![Coverage Status](https://coveralls.io/repos/github/fzerorubigd/chapar/badge.svg?branch=master)](https://coveralls.io/github/fzerorubigd/chapar?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/fzerorubigd/chapar)](https://goreportcard.com/report/github.com/fzerorubigd/chapar)

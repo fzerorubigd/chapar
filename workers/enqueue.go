@@ -65,6 +65,6 @@ func (m *Manager) Enqueue(ctx context.Context, queue string, data []byte, opts .
 		Timestamp: h.ts.Unix(),
 	}
 
-	return h.producer.Produce(t)
+	return h.producer.Produce(h.queue, t)
 
 }

@@ -8,13 +8,11 @@ type Consumer interface {
 	// if the consumer implement Initializer then it can use the context
 	// for closing the connection the queue concept is related to the consumer itself
 	Jobs(string) chan *tasks.Task
-	// Requeue is used to return a failed job to the queue, its depend on the driver
-	Requeue(string, *tasks.Task) error
 }
 
 // Producer the sync producer
 type Producer interface {
-	Produce(*tasks.Task) error
+	Produce(string, *tasks.Task) error
 }
 
 // Driver is used for both consumer and producer at the same time

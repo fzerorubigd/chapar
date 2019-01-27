@@ -32,7 +32,7 @@ func (b *brokerMock) Jobs(q string) chan *tasks.Task {
 	return b.c
 }
 
-func (b *brokerMock) Requeue(_ string, t *tasks.Task) error {
+func (b *brokerMock) Produce(_ string, t *tasks.Task) error {
 	go func() {
 		b.c <- t
 	}()
@@ -65,7 +65,7 @@ func TestProcessQueue(t *testing.T) {
 	}
 	w := &worker{}
 	w.wg.Add(len(mock.items))
-	m := NewManager(mock, nil)
+	m := NewManager(mock, mock)
 	assert.NoError(t, m.RegisterWorker("queue", w))
 
 	go func() {
@@ -107,7 +107,7 @@ func TestProcessQueueContext(t *testing.T) {
 		},
 	}
 	w := &workerWaitCtx{}
-	m := NewManager(mock, nil)
+	m := NewManager(mock, mock)
 	assert.NoError(t, m.RegisterWorker("queue_2", w))
 
 	go func() {

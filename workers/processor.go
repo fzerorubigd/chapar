@@ -21,6 +21,7 @@ type (
 
 		queue    string
 		consumer Consumer
+		producer Producer
 	}
 	// ProcessOptions is the options for a job handler
 	ProcessOptions func(*ProcessHandler) error
@@ -92,7 +93,12 @@ func (m *Manager) ProcessQueue(ctx context.Context, queue string, opts ...Proces
 		return errors.New("consumer is not set")
 	}
 
+	if m.producer == nil {
+		return errors.New("producer is not set")
+	}
+
 	handler := &ProcessHandler{
+		producer: m.producer,
 		consumer: m.consumer,
 		queue:    queue,
 	}
@@ -134,7 +140,7 @@ func (m *Manager) ProcessQueue(ctx context.Context, queue string, opts ...Proces
 			go func(free bool) {
 				if err := m.processJob(ctx, job, workers()); err != nil {
 					job.Redeliver++
-					if err := handler.consumer.Requeue(handler.queue, job); err != nil {
+					if err := handler.producer.Produce(handler.queue, job); err != nil {
 						// What to do :/
 					}
 				}
