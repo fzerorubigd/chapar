@@ -1,0 +1,10 @@
+protoc:
+  version: 3.6.1
+
+generate:
+  go_options:
+    import_path: github.com/fzerorubigd/chapar/tasks
+  plugins:
+    - name: gogo
+      type: gogo
+      output: .
