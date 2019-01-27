@@ -3,8 +3,9 @@ package workers
 import (
 	"context"
 
-	"github.com/fzerorubigd/chaapaar/taskspb"
 	"github.com/pkg/errors"
+
+	"github.com/fzerorubigd/chaapaar/taskspb"
 )
 
 // TODO : no global state
@@ -82,7 +83,7 @@ func WithRetryCount(cnt int) ProcessOptions {
 	}
 }
 
-func ProcessQueue(ctx context.Context, broker Consumer, queue string, opts ...ProcessOptions) error {
+func (m *Manager) ProcessQueue(ctx context.Context, broker Consumer, queue string, opts ...ProcessOptions) error {
 	handler := &ProcessHandler{
 		broker: broker,
 		queue:  queue,
@@ -102,14 +103,14 @@ func ProcessQueue(ctx context.Context, broker Consumer, queue string, opts ...Pr
 			return handler.broker.Jobs(handler.queue)
 		}
 		workers = func() *WorkerHandler {
-			return getWorkers(handler.queue)
+			return m.getWorkers(handler.queue)
 		}
 	} else {
 		c := handler.broker.Jobs(handler.queue)
 		getChan = func() chan *taskspb.Task {
 			return c
 		}
-		w := getWorkers(handler.queue)
+		w := m.getWorkers(handler.queue)
 		workers = func() *WorkerHandler {
 			return w
 		}
@@ -121,9 +122,9 @@ func ProcessQueue(ctx context.Context, broker Consumer, queue string, opts ...Pr
 			// TODO : is it better to return another error here?
 			return nil
 		case job := <-getChan():
-			written := handlerWait(ctx, handler)
+			written := m.handlerWait(ctx, handler)
 			go func(free bool) {
-				if err := processJob(ctx, job, workers()); err != nil {
+				if err := m.processJob(ctx, job, workers()); err != nil {
 					job.Redeliver++
 					if err := handler.broker.Requeue(handler.queue, job); err != nil {
 						// What to do :/
@@ -141,7 +142,7 @@ func ProcessQueue(ctx context.Context, broker Consumer, queue string, opts ...Pr
 }
 
 // just a helper to wait on both channel
-func handlerWait(ctx context.Context, h *ProcessHandler) bool {
+func (m *Manager) handlerWait(ctx context.Context, h *ProcessHandler) bool {
 	if h.parallel > 0 {
 		select {
 		case h.limit <- struct{}{}:
@@ -153,7 +154,7 @@ func handlerWait(ctx context.Context, h *ProcessHandler) bool {
 	return false
 }
 
-func processJob(ctx context.Context, job *taskspb.Task, wl *WorkerHandler) error {
+func (m *Manager) processJob(ctx context.Context, job *taskspb.Task, wl *WorkerHandler) error {
 	if wl == nil {
 		return errors.New("no active worker for this kind of job")
 	}

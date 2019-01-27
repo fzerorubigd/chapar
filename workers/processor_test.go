@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/fzerorubigd/chaapaar/taskspb"
 )
 
@@ -64,10 +65,11 @@ func TestProcessQueue(t *testing.T) {
 	}
 	w := &worker{}
 	w.wg.Add(len(mock.items))
-	assert.NoError(t, RegisterWorker("queue", w))
+	m := &Manager{}
+	assert.NoError(t, m.RegisterWorker("queue", w))
 
 	go func() {
-		err := ProcessQueue(ctx, mock, "queue", WithParallelLimit(1))
+		err := m.ProcessQueue(ctx, mock, "queue", WithParallelLimit(1))
 		// because of the wait group, if we had an err here everything hangs for ever
 		if err != nil {
 			panic(fmt.Sprintf("process queue failed, panic to release, err was %s", err))
@@ -105,10 +107,11 @@ func TestProcessQueueContext(t *testing.T) {
 		},
 	}
 	w := &workerWaitCtx{}
-	assert.NoError(t, RegisterWorker("queue_2", w))
+	m := &Manager{}
+	assert.NoError(t, m.RegisterWorker("queue_2", w))
 
 	go func() {
-		err := ProcessQueue(ctx, mock, "queue_2", WithParallelLimit(1))
+		err := m.ProcessQueue(ctx, mock, "queue_2", WithParallelLimit(1))
 		assert.NoError(t, err)
 	}()
 	// I don't like this, but we need to wait here. also waiting for other condition here is

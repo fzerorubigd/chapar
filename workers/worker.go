@@ -2,9 +2,8 @@ package workers
 
 import (
 	"context"
-	"sync"
 
-	errors2 "github.com/pkg/errors"
+	"github.com/pkg/errors"
 )
 
 // TODO : Support for middleware
@@ -25,38 +24,36 @@ type (
 	// WorkerOptions func(*WorkerHandler) error
 )
 
-var (
-	workers = make(map[string]*WorkerHandler)
-
-	workerLock sync.RWMutex
-)
-
 // RegisterWorker try to register a worker for a job
-func RegisterWorker(name string, w Worker /* , opts ...WorkerOptions*/) error {
-	workerLock.Lock()
-	defer workerLock.Unlock()
+func (m *Manager) RegisterWorker(name string, w Worker /* , opts ...WorkerOptions*/) error {
+	m.workerLock.Lock()
+	defer m.workerLock.Unlock()
 
 	handler := &WorkerHandler{
 		w: w,
 	}
-	//for i := range opts {
-	//	if err := opts[i](handler); err != nil {
-	//		return err
-	//	}
-	//}
-
-	if _, ok := workers[name]; ok {
-		return errors2.Errorf("worker with name %s already registered", name)
+	// for i := range opts {
+	// 	if err := opts[i](handler); err != nil {
+	// 		return err
+	// 	}
+	// }
+	if m.workers == nil {
+		m.workers = make(map[string]*WorkerHandler)
+	}
+	if _, ok := m.workers[name]; ok {
+		return errors.Errorf("worker with name %s already registered", name)
 	}
 
-	workers[name] = handler
+	m.workers[name] = handler
 
 	return nil
 }
 
-func getWorkers(name string) *WorkerHandler {
-	workerLock.RLock()
-	defer workerLock.RUnlock()
-
-	return workers[name]
+func (m *Manager) getWorkers(name string) *WorkerHandler {
+	m.workerLock.RLock()
+	defer m.workerLock.RUnlock()
+	if m.workers == nil {
+		return nil
+	}
+	return m.workers[name]
 }
