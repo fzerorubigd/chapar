@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/fzerorubigd/chaapaar/taskspb"
+	"github.com/fzerorubigd/chaapaar/tasks"
 )
 
 // TODO : no global state
@@ -31,9 +31,9 @@ const (
 )
 
 // GetJob is a helper to get the job from the context
-func GetJob(ctx context.Context) (*taskspb.Task, error) {
+func GetJob(ctx context.Context) (*tasks.Task, error) {
 	j := ctx.Value(jobKey)
-	t, ok := j.(*taskspb.Task)
+	t, ok := j.(*tasks.Task)
 	if !ok {
 		return nil, errors.New("the context dose not have a job")
 	}
@@ -42,7 +42,7 @@ func GetJob(ctx context.Context) (*taskspb.Task, error) {
 }
 
 // GetJobID return the job id from the context
-func GetJobID(ctx context.Context) (*taskspb.UUID, error) {
+func GetJobID(ctx context.Context) (*tasks.UUID, error) {
 	j, err := GetJob(ctx)
 	if err != nil {
 		return nil, err
@@ -95,11 +95,11 @@ func (m *Manager) ProcessQueue(ctx context.Context, broker Consumer, queue strin
 		}
 	}
 	var (
-		getChan func() chan *taskspb.Task
+		getChan func() chan *tasks.Task
 		workers func() *WorkerHandler
 	)
 	if handler.live {
-		getChan = func() chan *taskspb.Task {
+		getChan = func() chan *tasks.Task {
 			return handler.broker.Jobs(handler.queue)
 		}
 		workers = func() *WorkerHandler {
@@ -107,7 +107,7 @@ func (m *Manager) ProcessQueue(ctx context.Context, broker Consumer, queue strin
 		}
 	} else {
 		c := handler.broker.Jobs(handler.queue)
-		getChan = func() chan *taskspb.Task {
+		getChan = func() chan *tasks.Task {
 			return c
 		}
 		w := m.getWorkers(handler.queue)
@@ -154,7 +154,7 @@ func (m *Manager) handlerWait(ctx context.Context, h *ProcessHandler) bool {
 	return false
 }
 
-func (m *Manager) processJob(ctx context.Context, job *taskspb.Task, wl *WorkerHandler) error {
+func (m *Manager) processJob(ctx context.Context, job *tasks.Task, wl *WorkerHandler) error {
 	if wl == nil {
 		return errors.New("no active worker for this kind of job")
 	}
