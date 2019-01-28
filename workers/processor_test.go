@@ -32,11 +32,15 @@ func (b *brokerMock) Jobs(q string) chan *tasks.Task {
 	return b.c
 }
 
-func (b *brokerMock) Produce(_ string, t *tasks.Task) error {
-	go func() {
-		b.c <- t
-	}()
+func (b *brokerMock) Sync(_ string, t *tasks.Task) error {
+	b.c <- t
 	return nil
+}
+
+func (b *brokerMock) Async(q string, t *tasks.Task) {
+	go func() {
+		_ = b.Sync(q, t)
+	}()
 }
 
 type worker struct {

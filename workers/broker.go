@@ -10,9 +10,12 @@ type Consumer interface {
 	Jobs(string) chan *tasks.Task
 }
 
-// Producer the sync producer
+// Producer the producer for the message
 type Producer interface {
-	Produce(string, *tasks.Task) error
+	// Sync try to produce sync message.
+	Sync(string, *tasks.Task) error
+	// Async is the asynchronous message producer
+	Async(string, *tasks.Task)
 }
 
 // Driver is used for both consumer and producer at the same time

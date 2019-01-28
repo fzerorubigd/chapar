@@ -140,9 +140,7 @@ func (m *Manager) ProcessQueue(ctx context.Context, queue string, opts ...Proces
 			go func(free bool) {
 				if err := m.processJob(ctx, job, workers()); err != nil {
 					job.Redeliver++
-					if err := handler.producer.Produce(handler.queue, job); err != nil {
-						// What to do :/
-					}
+					handler.producer.Async(handler.queue, job)
 				}
 				if free {
 					select {

@@ -15,9 +15,8 @@ type (
 	EnqueueOptions struct {
 		producer Producer
 		queue    string
-		data     []byte
-		meta     []byte
-		ts       time.Time
+		async    bool
+		t        tasks.Task
 	}
 	// EnqueueHandler is the handler for the enqueue options
 	EnqueueHandler func(*EnqueueOptions) error
@@ -26,15 +25,23 @@ type (
 // WithMetaData add metadata to job, this metadata is passed as is, and a worker can extract it
 func WithMetaData(data []byte) EnqueueHandler {
 	return func(o *EnqueueOptions) error {
-		o.meta = data
+		o.t.MetaData = data
 		return nil
 	}
 }
 
-// WitCustomTimestamp add custome timestamp to the task, need this for testing
-func WitCustomTimestamp(ts time.Time) EnqueueHandler {
+// WithCustomTimestamp add custome timestamp to the task, need this for testing
+func WithCustomTimestamp(ts time.Time) EnqueueHandler {
 	return func(o *EnqueueOptions) error {
-		o.ts = ts
+		o.t.Timestamp = ts.Unix()
+		return nil
+	}
+}
+
+// WithAsync use async producer instead of sync
+func WithAsync() EnqueueHandler {
+	return func(o *EnqueueOptions) error {
+		o.async = true
 		return nil
 	}
 }
@@ -47,9 +54,12 @@ func (m *Manager) Enqueue(ctx context.Context, queue string, data []byte, opts .
 
 	h := &EnqueueOptions{
 		producer: m.producer,
-		data:     data,
 		queue:    queue,
-		ts:       time.Now(),
+		t: tasks.Task{
+			ID:        uuid.New(),
+			Timestamp: time.Now().Unix(),
+			Data:      data,
+		},
 	}
 
 	for i := range opts {
@@ -57,14 +67,10 @@ func (m *Manager) Enqueue(ctx context.Context, queue string, data []byte, opts .
 			return err
 		}
 	}
-	t := &tasks.Task{
-		ID:        uuid.New(),
-		MetaData:  h.meta,
-		Redeliver: 0,
-		Data:      h.data,
-		Timestamp: h.ts.Unix(),
+
+	if h.async {
+		h.producer.Async(h.queue, &h.t)
+		return nil
 	}
-
-	return h.producer.Produce(h.queue, t)
-
+	return h.producer.Sync(h.queue, &h.t)
 }
