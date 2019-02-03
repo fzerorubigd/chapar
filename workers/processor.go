@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -23,7 +24,7 @@ type (
 	}
 	// ProcessOptions is the options for a job handler
 	ProcessOptions func(*ProcessHandler) error
-	contextKey     int
+	contextKey int
 )
 
 const (
@@ -151,6 +152,23 @@ func (m *Manager) ProcessQueue(ctx context.Context, queue string, opts ...Proces
 	}
 }
 
+// Process start all queue processing
+func (m *Manager) Process(ctx context.Context, opts ...ProcessOptions) {
+	wg := sync.WaitGroup{}
+	m.workerLock.RLock()
+	for i := range m.workers {
+		wg.Add(1)
+		go func() {
+			// TODO : log err
+			_ = m.ProcessQueue(ctx, i, opts...)
+			wg.Done()
+		}()
+	}
+	m.workerLock.RUnlock()
+
+	wg.Wait()
+}
+
 // just a helper to wait on both channel
 func (m *Manager) handlerWait(ctx context.Context, h *ProcessHandler) bool {
 	if h.parallel > 0 {
@@ -164,7 +182,14 @@ func (m *Manager) handlerWait(ctx context.Context, h *ProcessHandler) bool {
 	return false
 }
 
-func (m *Manager) processJob(ctx context.Context, job *tasks.Task, wl *WorkerHandler) error {
+func (m *Manager) processJob(ctx context.Context, job *tasks.Task, wl *WorkerHandler) (err error) {
+	defer func() {
+		// handle panics in job with err
+		if e := recover(); e != nil {
+			err = errors.New("recovering from panic in worker")
+			return
+		}
+	}()
 	if wl == nil {
 		return errors.New("no active worker for this kind of job")
 	}
