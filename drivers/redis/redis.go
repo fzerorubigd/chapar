@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
 
 	"github.com/fzerorubigd/chapar/tasks"
@@ -14,7 +14,7 @@ import (
 )
 
 type redisDriver struct {
-	client      *redis.Client
+	client      *redis.Pool
 	queuePrefix string
 
 	chans map[string]chan *tasks.Task
@@ -25,17 +25,36 @@ type redisDriver struct {
 
 // Options is the option type used for the create redis client or other options
 type Options struct {
-	client *redis.Client
+	client *redis.Pool
 	prefix string
 }
 
 type Handler func(*Options) error
 
 func (rd *redisDriver) pop(ctx context.Context, topic string) chan *tasks.Task {
-	read := func() chan *redis.StringSliceCmd {
-		c := make(chan *redis.StringSliceCmd)
+	type duet struct {
+		res interface{}
+		err error
+	}
+	read := func() chan duet {
+		c := make(chan duet)
 		go func() {
-			c <- rd.client.BLPop(time.Second, topic)
+			conn := rd.client.Get()
+			d := duet{}
+			d.res, d.err = conn.Do("BLPOP", topic, 0)
+			select {
+			case c <- d:
+			case <-ctx.Done():
+				if d.err != nil {
+					return
+				}
+				res, err := redis.Strings(d.res, d.err)
+				if err != nil {
+					// TODO : log
+					return
+				}
+				_, _ = conn.Do("LPUSH", topic, res[1])
+			}
 		}()
 		return c
 	}
@@ -44,13 +63,9 @@ func (rd *redisDriver) pop(ctx context.Context, topic string) chan *tasks.Task {
 		for {
 			select {
 			case msg := <-read():
-				res, err := msg.Result()
-				if err == redis.Nil {
-					// ok, continue
-					continue
-				}
+				res, err := redis.Strings(msg.res, msg.err)
 				if err != nil {
-					// Log!
+					// TODO : log
 					continue
 				}
 				if len(res) == 2 && res[0] == topic {
@@ -64,15 +79,13 @@ func (rd *redisDriver) pop(ctx context.Context, topic string) chan *tasks.Task {
 						case <-ctx.Done():
 							// OK, context canceled return the job back to the redis
 							// TODO: err check? log?
-							rd.client.LPush(topic, res[1])
+							_, _ = rd.client.Get().Do("LPUSH", topic, res[1])
 							return
 						}
 					}
 				}
-				// TODO : log
-				// TODO: after context done, there is a chance to get a job from the redis, and we might miss that
-				// case <-ctx.Done():
-				// 	return
+			case <-ctx.Done():
+				return
 			}
 		}
 	}()
@@ -101,21 +114,21 @@ func (rd *redisDriver) Sync(q string, t *tasks.Task) error {
 	if err != nil {
 		return err
 	}
-	i := rd.client.RPush(q, string(b))
-	return i.Err()
+	_, err = redis.Int(rd.client.Get().Do("RPUSH", q, string(b)))
+	return err
 }
 
 func (rd *redisDriver) Async(q string, t *tasks.Task) {
 	// In redis async is not that important
-	// go func() {
-	if err := rd.Sync(q, t); err != nil {
-		// TODO: log
-	}
-	// }()
+	go func() {
+		if err := rd.Sync(q, t); err != nil {
+			// TODO: log
+		}
+	}()
 }
 
-// WithRedisClient is one mandatory option to set the client
-func WithRedisClient(c *redis.Client) Handler {
+// WithRedisPool is one mandatory option to set the client
+func WithRedisPool(c *redis.Pool) Handler {
 	return func(o *Options) error {
 		if o.client != nil {
 			return errors.New("client already set, only set one client option or redis option")
@@ -129,12 +142,21 @@ func WithRedisClient(c *redis.Client) Handler {
 }
 
 // WithRedisOptions try to create redis client based on options
-func WithRedisOptions(opt *redis.Options) Handler {
+func WithRedisOptions(network, address string, options ...redis.DialOption) Handler {
 	return func(o *Options) error {
 		if o.client != nil {
 			return errors.New("client already set, only set one client option or redis option")
 		}
-		o.client = redis.NewClient(opt)
+		o.client = &redis.Pool{
+			Dial: func() (redis.Conn, error) {
+				return redis.Dial(network, address, options...)
+			},
+			TestOnBorrow: func(c redis.Conn, _ time.Time) error {
+				_, err := c.Do("PING")
+				return err
+			},
+			MaxIdle: 1,
+		}
 		return nil
 	}
 }
@@ -157,7 +179,7 @@ func NewDriver(ctx context.Context, opts ...Handler) (workers.Driver, error) {
 	}
 
 	if o.client == nil {
-		return nil, errors.New("no client set in the option sue either WithRedisOptions or WithRedisClient")
+		return nil, errors.New("no client set in the option sue either WithRedisOptions or WithRedisPool")
 	}
 
 	return &redisDriver{
