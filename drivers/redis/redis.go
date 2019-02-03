@@ -2,14 +2,12 @@ package redis
 
 import (
 	"context"
-	"encoding/json"
 	"sync"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
 
-	"github.com/fzerorubigd/chapar/tasks"
 	"github.com/fzerorubigd/chapar/workers"
 )
 
@@ -17,7 +15,7 @@ type redisDriver struct {
 	client      *redis.Pool
 	queuePrefix string
 
-	chans map[string]chan *tasks.Task
+	chans map[string]chan []byte
 	lock  sync.Mutex
 
 	ctx func() (context.Context, context.CancelFunc)
@@ -31,7 +29,7 @@ type Options struct {
 
 type Handler func(*Options) error
 
-func (rd *redisDriver) pop(ctx context.Context, topic string) chan *tasks.Task {
+func (rd *redisDriver) pop(ctx context.Context, topic string) chan []byte {
 	type duet struct {
 		res interface{}
 		err error
@@ -58,7 +56,7 @@ func (rd *redisDriver) pop(ctx context.Context, topic string) chan *tasks.Task {
 		}()
 		return c
 	}
-	task := make(chan *tasks.Task)
+	task := make(chan []byte)
 	go func() {
 		for {
 			select {
@@ -69,19 +67,14 @@ func (rd *redisDriver) pop(ctx context.Context, topic string) chan *tasks.Task {
 					continue
 				}
 				if len(res) == 2 && res[0] == topic {
-					tsk := tasks.Task{}
-					err := json.Unmarshal([]byte(res[1]), &tsk)
-					if err == nil {
-						// TODO : log
-						select {
-						case task <- &tsk:
-							continue
-						case <-ctx.Done():
-							// OK, context canceled return the job back to the redis
-							// TODO: err check? log?
-							_, _ = rd.client.Get().Do("LPUSH", topic, res[1])
-							return
-						}
+					select {
+					case task <- []byte(res[1]):
+						continue
+					case <-ctx.Done():
+						// OK, context canceled return the job back to the redis
+						// TODO: err check? log?
+						_, _ = rd.client.Get().Do("LPUSH", topic, res[1])
+						return
 					}
 				}
 			case <-ctx.Done():
@@ -93,7 +86,7 @@ func (rd *redisDriver) pop(ctx context.Context, topic string) chan *tasks.Task {
 	return task
 }
 
-func (rd *redisDriver) Jobs(queue string) chan *tasks.Task {
+func (rd *redisDriver) Jobs(queue string) chan []byte {
 	rd.lock.Lock()
 	defer rd.lock.Unlock()
 
@@ -108,17 +101,13 @@ func (rd *redisDriver) Jobs(queue string) chan *tasks.Task {
 	return c
 }
 
-func (rd *redisDriver) Sync(q string, t *tasks.Task) error {
+func (rd *redisDriver) Sync(q string, t []byte) error {
 	q = rd.queuePrefix + q
-	b, err := json.Marshal(t)
-	if err != nil {
-		return err
-	}
-	_, err = redis.Int(rd.client.Get().Do("RPUSH", q, string(b)))
+	_, err := redis.Int(rd.client.Get().Do("RPUSH", q, string(t)))
 	return err
 }
 
-func (rd *redisDriver) Async(q string, t *tasks.Task) {
+func (rd *redisDriver) Async(q string, t []byte) {
 	// In redis async is not that important
 	go func() {
 		if err := rd.Sync(q, t); err != nil {
@@ -185,7 +174,7 @@ func NewDriver(ctx context.Context, opts ...Handler) (workers.Driver, error) {
 	return &redisDriver{
 		client:      o.client,
 		queuePrefix: o.prefix,
-		chans:       make(map[string]chan *tasks.Task),
+		chans:       make(map[string]chan []byte),
 		ctx: func() (context.Context, context.CancelFunc) {
 			return context.WithCancel(ctx)
 		},

@@ -67,10 +67,13 @@ func (m *Manager) Enqueue(ctx context.Context, queue string, data []byte, opts .
 			return err
 		}
 	}
-
+	data, err := h.t.Marshal()
+	if err != nil {
+		return err
+	}
 	if h.async {
-		h.producer.Async(h.queue, &h.t)
+		h.producer.Async(h.queue, data)
 		return nil
 	}
-	return h.producer.Sync(h.queue, &h.t)
+	return h.producer.Sync(h.queue, data)
 }

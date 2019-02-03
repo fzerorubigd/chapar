@@ -2,24 +2,26 @@ package redis
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
-	"github.com/fzerorubigd/redimock"
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/fzerorubigd/redimock"
+
 	"github.com/fzerorubigd/chapar/tasks"
 )
 
-func newTask(data string) *tasks.Task {
-	return &tasks.Task{
+func newTask(data string) ([]byte, error) {
+	t := &tasks.Task{
 		Data: []byte(data),
 		ID:   uuid.New(),
 	}
+
+	return t.Marshal()
 }
 
 func TestNewDriver(t *testing.T) {
@@ -34,12 +36,11 @@ func TestNewDriver(t *testing.T) {
 		WithQueuePrefix("prefix_"),
 	)
 	require.NoError(t, err)
-	t1 := newTask("test")
-	b1, err := json.Marshal(t1)
+	t1, err := newTask("test")
 	require.NoError(t, err)
 
 	s.ExpectRPush(1, "prefix_test").Once()
-	s.ExpectBLPop(0, "prefix_test", string(b1), true, "prefix_test").Once()
+	s.ExpectBLPop(0, "prefix_test", string(t1), true, "prefix_test").Once()
 
 	require.NoError(t, d.Sync("test", t1))
 
@@ -90,15 +91,14 @@ func TestContextCancel(t *testing.T) {
 	ctx, cl2 := context.WithCancel(ctx)
 	d, err := NewDriver(ctx, WithRedisPool(red), WithQueuePrefix("prefix_"))
 	require.NoError(t, err)
-	t1 := newTask("test")
-	b1, err := json.Marshal(t1)
+	t1, err := newTask("test")
 	require.NoError(t, err)
 
 	s.ExpectPing().Any()
 	s.Expect("RPUSH").WithAnyArgs().Once()
 
 	// the blpop is random, and also the lpush, since this test try to close the task process.
-	s.ExpectBLPop(0, "prefix_test", string(b1), true, "prefix_test").
+	s.ExpectBLPop(0, "prefix_test", string(t1), true, "prefix_test").
 		WithDelay(time.Second).
 		Any()
 	s.Expect("LPUSH").WithAnyArgs().Any()

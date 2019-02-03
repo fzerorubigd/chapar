@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/fzerorubigd/chapar/tasks"
 )
 
 type normalWorker struct {
@@ -28,7 +26,7 @@ func (nw *normalWorker) Process(ctx context.Context, data []byte) error {
 
 func TestManager(t *testing.T) {
 	mock := &brokerMock{
-		c: make(chan *tasks.Task),
+		c: make(chan []byte),
 	}
 	m := NewManager(mock, mock)
 	w := &normalWorker{t: t}

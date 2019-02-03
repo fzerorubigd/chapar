@@ -14,17 +14,18 @@ import (
 )
 
 type brokerMock struct {
-	c chan *tasks.Task
+	c chan []byte
 
 	items []*tasks.Task
 }
 
-func (b *brokerMock) Jobs(q string) chan *tasks.Task {
+func (b *brokerMock) Jobs(q string) chan []byte {
 	if b.c == nil {
-		b.c = make(chan *tasks.Task)
+		b.c = make(chan []byte)
 		go func() {
 			for i := range b.items {
-				b.c <- b.items[i]
+				t, _ := b.items[i].Marshal()
+				b.c <- t
 			}
 		}()
 	}
@@ -32,12 +33,12 @@ func (b *brokerMock) Jobs(q string) chan *tasks.Task {
 	return b.c
 }
 
-func (b *brokerMock) Sync(_ string, t *tasks.Task) error {
+func (b *brokerMock) Sync(_ string, t []byte) error {
 	b.c <- t
 	return nil
 }
 
-func (b *brokerMock) Async(q string, t *tasks.Task) {
+func (b *brokerMock) Async(q string, t []byte) {
 	go func() {
 		_ = b.Sync(q, t)
 	}()

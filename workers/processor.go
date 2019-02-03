@@ -108,11 +108,11 @@ func (m *Manager) ProcessQueue(ctx context.Context, queue string, opts ...Proces
 		}
 	}
 	var (
-		getChan func() chan *tasks.Task
+		getChan func() chan []byte
 		workers func() *WorkerHandler
 	)
 	if handler.live {
-		getChan = func() chan *tasks.Task {
+		getChan = func() chan []byte {
 			return handler.consumer.Jobs(handler.queue)
 		}
 		workers = func() *WorkerHandler {
@@ -120,7 +120,7 @@ func (m *Manager) ProcessQueue(ctx context.Context, queue string, opts ...Proces
 		}
 	} else {
 		c := handler.consumer.Jobs(handler.queue)
-		getChan = func() chan *tasks.Task {
+		getChan = func() chan []byte {
 			return c
 		}
 		w := m.getWorkers(handler.queue)
@@ -135,11 +135,20 @@ func (m *Manager) ProcessQueue(ctx context.Context, queue string, opts ...Proces
 			// TODO : is it better to return another error here?
 			return nil
 		case job := <-getChan():
+			t := &tasks.Task{}
+			if err := t.Unmarshal(job); err != nil {
+				// TODO : Log?
+				continue
+			}
 			written := m.handlerWait(ctx, handler)
 			go func(free bool) {
-				if err := m.processJob(ctx, job, workers()); err != nil {
-					job.Redeliver++
-					handler.producer.Async(handler.queue, job)
+				if err := m.processJob(ctx, t, workers()); err != nil {
+					t.Redeliver++
+					m, err := t.Marshal()
+					if err != nil {
+						// TODO : log
+					}
+					handler.producer.Async(handler.queue, m)
 				}
 				if free {
 					select {
