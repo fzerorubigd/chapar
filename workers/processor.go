@@ -9,8 +9,6 @@ import (
 	"github.com/fzerorubigd/chapar/tasks"
 )
 
-// TODO : no global state
-
 type (
 	// ProcessHandler is the object used to track the queue monitoring
 	ProcessHandler struct {
