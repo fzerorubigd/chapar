@@ -63,7 +63,7 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	h := &http.Server{Addr: ":8880",}
+	h := &http.Server{Addr: ":8880"}
 	go func() {
 		if err := h.ListenAndServe(); err != nil {
 			log.Print(err)

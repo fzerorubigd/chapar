@@ -27,6 +27,7 @@ type Options struct {
 	prefix string
 }
 
+// Handler is the option handler
 type Handler func(*Options) error
 
 func (rd *redisDriver) pop(ctx context.Context, topic string) chan []byte {
