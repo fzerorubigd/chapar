@@ -6,8 +6,9 @@ import (
 
 // Manager is the manager used for all the job.
 type Manager struct {
-	workers    map[string]*WorkerHandler
-	workerLock sync.RWMutex
+	workers map[string]*WorkerHandler
+	middle  []Middleware
+	lock    sync.RWMutex
 
 	// getter and setter and also protect them for race
 	consumer Consumer

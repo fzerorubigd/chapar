@@ -172,6 +172,11 @@ func NewDriver(ctx context.Context, opts ...Handler) (workers.Driver, error) {
 		return nil, errors.New("no client set in the option sue either WithRedisOptions or WithRedisPool")
 	}
 
+	_, err := o.client.Get().Do("PING")
+	if err != nil {
+		return nil, err
+	}
+
 	return &redisDriver{
 		client:      o.client,
 		queuePrefix: o.prefix,

@@ -11,7 +11,7 @@ before_install:
   - go get -v github.com/mattn/goveralls
   - if ! go get code.google.com/p/go.tools/cmd/cover; then go get golang.org/x/tools/cmd/cover; fi
 script:
-  - goveralls -v -race -service=travis-ci -repotoken=$COVERALLS_TOKEN -ignore="example/worker/main.go,example/worker/worker.go,example/application/main.go"|| go test -race -v
+  - goveralls -v -race -service=travis-ci -repotoken=$COVERALLS_TOKEN -ignore="example/worker/main.go,example/worker/worker.go,example/worker/middleware.go,example/application/main.go"|| go test -race -v
 matrix:
   allow_failures:
     - go: 1.7

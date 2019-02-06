@@ -50,8 +50,10 @@ func main() {
 
 	// Create the manager
 	m := workers.NewManager(driver, driver)
+	// Register a global middleware
+	m.RegisterMiddleware(middleware("Global"))
 	// Register workers
-	err = m.RegisterWorker("dummy", dummyWorker{})
+	err = m.RegisterWorker("dummy", dummyWorker{}, workers.WithMiddleware(middleware("DummyMiddle")))
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -24,7 +24,7 @@ type (
 	}
 	// ProcessOptions is the options for a job handler
 	ProcessOptions func(*ProcessHandler) error
-	contextKey     int
+	contextKey int
 )
 
 const (
@@ -109,22 +109,22 @@ func (m *Manager) ProcessQueue(ctx context.Context, queue string, opts ...Proces
 	}
 	var (
 		getChan func() chan []byte
-		workers func() *WorkerHandler
+		workers func() Worker
 	)
 	if handler.live {
 		getChan = func() chan []byte {
 			return handler.consumer.Jobs(handler.queue)
 		}
-		workers = func() *WorkerHandler {
-			return m.getWorkers(handler.queue)
+		workers = func() Worker {
+			return m.getWorker(handler.queue)
 		}
 	} else {
 		c := handler.consumer.Jobs(handler.queue)
 		getChan = func() chan []byte {
 			return c
 		}
-		w := m.getWorkers(handler.queue)
-		workers = func() *WorkerHandler {
+		w := m.getWorker(handler.queue)
+		workers = func() Worker {
 			return w
 		}
 	}
@@ -164,7 +164,7 @@ func (m *Manager) ProcessQueue(ctx context.Context, queue string, opts ...Proces
 // Process start all queue processing
 func (m *Manager) Process(ctx context.Context, opts ...ProcessOptions) {
 	wg := sync.WaitGroup{}
-	m.workerLock.RLock()
+	m.lock.RLock()
 	for i := range m.workers {
 		wg.Add(1)
 		go func() {
@@ -173,7 +173,7 @@ func (m *Manager) Process(ctx context.Context, opts ...ProcessOptions) {
 			wg.Done()
 		}()
 	}
-	m.workerLock.RUnlock()
+	m.lock.RUnlock()
 
 	wg.Wait()
 }
@@ -191,7 +191,7 @@ func (m *Manager) handlerWait(ctx context.Context, h *ProcessHandler) bool {
 	return false
 }
 
-func (m *Manager) processJob(ctx context.Context, job *tasks.Task, wl *WorkerHandler) (err error) {
+func (m *Manager) processJob(ctx context.Context, job *tasks.Task, w Worker) (err error) {
 	defer func() {
 		// handle panics in job with err
 		if e := recover(); e != nil {
@@ -199,9 +199,9 @@ func (m *Manager) processJob(ctx context.Context, job *tasks.Task, wl *WorkerHan
 			return
 		}
 	}()
-	if wl == nil {
+	if w == nil {
 		return errors.New("no active worker for this kind of job")
 	}
 	ctx = context.WithValue(ctx, jobKey, job)
-	return wl.w.Process(ctx, job.Data)
+	return w.Process(ctx, job.Data)
 }

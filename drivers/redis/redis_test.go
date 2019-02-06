@@ -31,16 +31,18 @@ func TestNewDriver(t *testing.T) {
 	s, err := redimock.NewServer(ctx, "")
 	require.NoError(t, err)
 
+	t1, err := newTask("test")
+	require.NoError(t, err)
+
+	s.ExpectPing().Any()
+	s.ExpectRPush(1, "prefix_test").Once()
+	s.ExpectBLPop(0, "prefix_test", string(t1), true, "prefix_test").Once()
+
 	d, err := NewDriver(ctx,
 		WithRedisOptions(s.Addr().Network(), s.Addr().String()),
 		WithQueuePrefix("prefix_"),
 	)
 	require.NoError(t, err)
-	t1, err := newTask("test")
-	require.NoError(t, err)
-
-	s.ExpectRPush(1, "prefix_test").Once()
-	s.ExpectBLPop(0, "prefix_test", string(t1), true, "prefix_test").Once()
 
 	require.NoError(t, d.Sync("test", t1))
 
@@ -87,10 +89,6 @@ func TestContextCancel(t *testing.T) {
 			return redis.Dial(s.Addr().Network(), s.Addr().String())
 		},
 	}
-	// Using another context for testing the driver
-	ctx, cl2 := context.WithCancel(ctx)
-	d, err := NewDriver(ctx, WithRedisPool(red), WithQueuePrefix("prefix_"))
-	require.NoError(t, err)
 	t1, err := newTask("test")
 	require.NoError(t, err)
 
@@ -102,6 +100,11 @@ func TestContextCancel(t *testing.T) {
 		WithDelay(time.Second).
 		Any()
 	s.Expect("LPUSH").WithAnyArgs().Any()
+
+	// Using another context for testing the driver
+	ctx, cl2 := context.WithCancel(ctx)
+	d, err := NewDriver(ctx, WithRedisPool(red), WithQueuePrefix("prefix_"))
+	require.NoError(t, err)
 
 	d.Async("test", t1)
 	d.Jobs("test") // Calling this function allocate the queue
