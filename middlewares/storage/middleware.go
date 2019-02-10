@@ -11,8 +11,9 @@ import (
 
 // Store is the storage for the task
 type Store interface {
-	// Store is for storing the task
-	Store(context.Context, *tasks.Task) error
+	// Store is for storing the task, the error is the error returned
+	// by the worker, nil means no error
+	Store(context.Context, *tasks.Task, error) error
 }
 
 type middleware struct {
@@ -26,11 +27,12 @@ func (m *middleware) Wrap(w workers.Worker) workers.Worker {
 			return errors.Wrap(err, "the context is not worker context")
 		}
 
-		if err := m.storage.Store(ctx, tsk); err != nil {
-			return err
+		err = w.Process(ctx, data)
+		if e := m.storage.Store(ctx, tsk, err); e != nil {
+			return e
 		}
 
-		return w.Process(ctx, data)
+		return err
 	})
 }
 

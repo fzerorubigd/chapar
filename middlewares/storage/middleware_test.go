@@ -17,7 +17,7 @@ type store struct {
 	err error
 }
 
-func (s store) Store(ctx context.Context, t *tasks.Task) error {
+func (s store) Store(ctx context.Context, t *tasks.Task, err error) error {
 	if string(t.Data) == "fail" {
 		return errors.New("fail based on payload")
 	}
