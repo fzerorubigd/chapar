@@ -30,7 +30,7 @@ func WithMetaData(data []byte) EnqueueHandler {
 	}
 }
 
-// WithCustomTimestamp add custome timestamp to the task, need this for testing
+// WithCustomTimestamp add custom timestamp to the task, need this for testing
 func WithCustomTimestamp(ts time.Time) EnqueueHandler {
 	return func(o *EnqueueOptions) error {
 		o.t.Timestamp = ts.Unix()

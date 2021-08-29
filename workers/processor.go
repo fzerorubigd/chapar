@@ -24,7 +24,7 @@ type (
 	}
 	// ProcessOptions is the options for a job handler
 	ProcessOptions func(*ProcessHandler) error
-	contextKey int
+	contextKey     int
 )
 
 const (
@@ -33,13 +33,12 @@ const (
 
 // GetJob is a helper to get the job from the context
 func GetJob(ctx context.Context) (*tasks.Task, error) {
-	j := ctx.Value(jobKey)
-	t, ok := j.(*tasks.Task)
+	j, ok := ctx.Value(jobKey).(*tasks.Task)
 	if !ok {
 		return nil, errors.New("the context dose not have a job")
 	}
 
-	return t, nil
+	return j, nil
 }
 
 // GetJobID return the job id from the context
@@ -85,8 +84,8 @@ func WithRetryCount(cnt int) ProcessOptions {
 	}
 }
 
-// ProcessQueue start the processing of the queue. this is blocker, so call it in its own routine, for terminating
-// the call, use the context
+// ProcessQueue start the processing of the queue. this is blocker, so call it in its own routine,
+// for terminating the call, use the context
 func (m *Manager) ProcessQueue(ctx context.Context, queue string, opts ...ProcessOptions) error {
 	if m.consumer == nil {
 		return errors.New("consumer is not set")

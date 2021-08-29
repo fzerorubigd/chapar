@@ -6,8 +6,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TODO : Support for middleware
-
 type (
 	// Worker for the actual plugin, the worker
 	Worker interface {
@@ -17,7 +15,7 @@ type (
 
 	// Middleware is a processor for the job, before real job.
 	Middleware interface {
-		// Wrap do the wrapping. it get a worker and transform it to new worker
+		// Wrap do the wrapping. it gets a worker and transform it to new worker
 		// normally in the new worker it should call the old worker.
 		Wrap(Worker) Worker
 	}

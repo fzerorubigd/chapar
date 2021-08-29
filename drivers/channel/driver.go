@@ -1,5 +1,5 @@
 // Package channel provide a simple and easy to use driver for testing this is not a
-// good driver and its not for use in production, there is no storage and exiting the
+// good driver, and it's not for use in production, there is no storage and exiting the
 // application means that you lose any job which is not processed.
 package channel
 

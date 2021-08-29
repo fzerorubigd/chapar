@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"errors"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -31,10 +30,11 @@ func TestNewStorageMiddleware(t *testing.T) {
 	m := workers.NewManager(d, d)
 	m.RegisterMiddleware(ml)
 
-	wg := sync.WaitGroup{}
-	wg.Add(2) // Two job is passing the middleware, the first should fail on middleware
+	group := make(chan struct{})
 	require.NoError(t, m.RegisterWorker("queue", workers.WorkerFunc(func(ctx context.Context, data []byte) error {
-		defer wg.Done()
+		defer func() {
+			group <- struct{}{}
+		}()
 
 		return nil
 	})))
@@ -47,8 +47,9 @@ func TestNewStorageMiddleware(t *testing.T) {
 	require.NoError(t, m.Enqueue(ctx, "queue", []byte("hi"), workers.WithAsync()))
 	require.NoError(t, m.Enqueue(ctx, "queue", []byte("bye"), workers.WithAsync()))
 
-	wg.Wait()
-	cl()
+	for i := 0; i < 3; i++ {
+		<-group
+	}
 }
 
 func TestMiddleware_Wrap(t *testing.T) {

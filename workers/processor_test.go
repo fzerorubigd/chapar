@@ -119,8 +119,7 @@ func TestProcessQueueContext(t *testing.T) {
 		err := m.ProcessQueue(ctx, "queue_2", WithParallelLimit(1))
 		assert.NoError(t, err)
 	}()
-	// I don't like this, but we need to wait here. also waiting for other condition here is
-	// much better here
+	// I don't like this, but we need to wait here. also waiting for other condition here is better
 	time.Sleep(time.Second)
 	cl()
 

@@ -20,7 +20,7 @@ type Task struct {
 
 // Marshal return the byte representation of the task
 func (t *Task) Marshal() ([]byte, error) {
-	// Currently the speed is not important, so just use the json
+	// Currently, the speed is not important, so just use the json
 	return json.Marshal(t)
 }
 
